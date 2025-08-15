@@ -1,4 +1,4 @@
-import sys
+import sys, math
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QImage, QPixmap, QColor, QFontMetrics, QClipboard
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QFileDialog
@@ -19,7 +19,7 @@ TXT_COLORS = ["white", "green", "red"]
 
 COLOR_PADDING = 3
 COLOR_HEIGHT = 50
-MIN_ALPHA_VALUE = 10
+MAX_ALPHA_TRANSPARENT = 10
 
 COLORS_BASIC = [
     True, True, True, False, True, True, True, False, True, False, False, True, True, True, True, False, False, False, False, False, False, True, True, True, True, True, True, False, True, False, True, True,
@@ -44,6 +44,7 @@ class Color:
         self.basic = COLORS_BASIC[id]
         self.button = QPushButton(window)
         self.button.clicked.connect(self.clickOnButton)
+        self.textStatsSize = None
         self.setSelected(self.basic)
 
 
@@ -79,9 +80,12 @@ class Window(QMainWindow):
         super().__init__()
 
         self.image = None
+        self.baseImage = None
         self.imagePath = None
         self.imageScale  = 10
         self.clipboard = QApplication.clipboard()
+        self.windowW = WINDOW_W
+        self.windowH = WINDOW_H
         self.initUI()
         self.updateDynamicUi(WINDOW_W, WINDOW_H)
 
@@ -92,8 +96,8 @@ class Window(QMainWindow):
         self.setMinimumSize(WINDOW_MIN_W, WINDOW_MIN_H)
         self.setStyleSheet("background-color: rgb(50, 50, 50)")
 
-
         self.text = QLabel("", self)
+        self.textStats = QLabel("", self)
 
         self.buttonOpen = QPushButton("Load image", self)
         self.buttonOpen.clicked.connect(self.loadImage)
@@ -125,6 +129,8 @@ class Window(QMainWindow):
 
 
     def updateDynamicUi(self, width, height):
+        self.windowW = width
+        self.windowH = height
         bw = (width - 33 * COLOR_PADDING) // 32 + 1
         bh = COLOR_HEIGHT
         for i in range(64):
@@ -138,8 +144,7 @@ class Window(QMainWindow):
                 self.colors[i].setRect(bx, by, bw, bh)
 
         allColorHeight = (COLOR_PADDING * 3) + (COLOR_HEIGHT * 2)
-        self.imageDisplayed.setGeometry(200, 50, width - 210, height - allColorHeight - 50)
-
+        self.imageDisplayed.setGeometry(200, 50, width - 410, height - allColorHeight - 50)
 
 
     def loadImage(self):
@@ -154,12 +159,14 @@ class Window(QMainWindow):
             selected_files = file_dialog.selectedFiles()
             self.imagePath = selected_files[0]
 
-            self.image = QImage(self.imagePath)
-            if self.image.isNull():
-                self.image = None
+            image = QImage(self.imagePath)
+            if image.isNull():
                 self.setText("You must select an image", TXT_ERROR)
                 return
 
+            self.image = image
+            self.baseImage = self.image.copy()
+            self.computeTextStat()
             w = self.image.width() * self.imageScale
             h = self.image.height() * self.imageScale
             tmpImg = self.image.scaled(w, h,
@@ -174,12 +181,15 @@ class Window(QMainWindow):
     def loadImageFromClipboard(self):
         self.setText()
 
-        self.image = self.clipboard.image(QClipboard.Mode.Clipboard)
-        if self.image.isNull():
-            self.image = None
+        image = self.clipboard.image(QClipboard.Mode.Clipboard)
+        if image.isNull():
+            image = None
             self.setText("You must have an image in your clipboard", TXT_ERROR)
             return
 
+        self.image = image
+        self.baseImage = self.image.copy()
+        self.computeTextStat()
         w = self.image.width() * self.imageScale
         h = self.image.height() * self.imageScale
         tmpImg = self.image.scaled(w, h,
@@ -195,13 +205,14 @@ class Window(QMainWindow):
             self.setText("You must load an image before transform it", TXT_ERROR)
             return
 
+        self.image = self.baseImage.copy()
         for y in range(self.image.height()):
             for x in range(self.image.width()):
                 color = self.image.pixelColor(x, y)
 
                 r, g, b, a = color.getRgb()
 
-                if a > MIN_ALPHA_VALUE:
+                if a > MAX_ALPHA_TRANSPARENT:
                     a = 255
                 else:
                     a = 0
@@ -211,22 +222,27 @@ class Window(QMainWindow):
                     minColorId = -1
 
                     for i in range(64):
+                        if not self.colors[i].selected:
+                            continue
                         testColor = self.colors[i].color
                         dr = abs(r - testColor[0])
                         dg = abs(g - testColor[1])
                         db = abs(b - testColor[2])
 
-                        testDiff = dr + dg + db
+                        # testDiff = dr + dg + db
+                        testDiff = math.sqrt(dr**2 + dg**2 + db**2)
 
                         if testDiff < minDiff:
                             minDiff = testDiff
                             minColorId = i
 
                     if minColorId != -1:
-                        closestColor = self.colors[i].color
+                        closestColor = self.colors[minColorId].color
                         r = closestColor[0]
                         g = closestColor[1]
                         b = closestColor[2]
+                    else:
+                        r, g, b, a = (0, 0, 0, 0)
 
                 self.image.setPixelColor(x, y, QColor(r, g, b, a))
 
@@ -272,6 +288,45 @@ class Window(QMainWindow):
 
         self.clipboard.setImage(self.image)
         self.setText("Image put in clipboard !", TXT_SUCCESS)
+
+
+    def computeTextStat(self):
+        if self.image == None:
+            return
+
+        nbPixel = 0
+
+        for y in range(self.image.height()):
+            for x in range(self.image.width()):
+                if self.image.pixelColor(x, y).alpha() > MAX_ALPHA_TRANSPARENT:
+                    nbPixel += 1
+
+        estimedTime = nbPixel * 30
+        idUnit = 0
+        unitsSize = [60, 60, 24, 30, 12]
+        unitsName = ["second", "minute", "hour", "day", "month", "year"]
+        while idUnit < len(unitsSize):
+            if estimedTime < unitsSize[idUnit]:
+                break
+            estimedTime /= unitsSize[idUnit]
+            idUnit += 1
+
+        unitName = unitsName[idUnit]
+        if estimedTime > 1:
+            unitName += "s"
+
+        text = f"Image stats\nsize : {self.image.width()}x{self.image.height()}" \
+                + f"\nnb pixels to draw : {nbPixel}\nestimed time : {estimedTime:.2f} {unitName}"
+
+        metrics = QFontMetrics(self.textStats.font())
+        size = metrics.size(0, text)  # QSize object
+        width = size.width()
+        height = size.height()
+
+        self.textStatsSize = (width, height)
+
+        self.textStats.setText(text)
+        self.textStats.setGeometry(self.windowW - width - 10, 30, width, height)
 
 
     def keyPressEvent(self, event):
