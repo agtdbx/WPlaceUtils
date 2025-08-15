@@ -1,7 +1,7 @@
 import sys, math
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QImage, QPixmap, QColor, QFontMetrics, QClipboard
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QComboBox, QFileDialog
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QComboBox, QSlider, QFileDialog
 
 from define import *
 from color import Color
@@ -49,17 +49,36 @@ class Window(QMainWindow):
         self.selectTransformMode.addItems(["Closest", "Vectorial"])
         self.selectTransformMode.setGeometry(20, 150, 150, 30)
 
+        self.labelTransformAlpha = QLabel(f"alpha to tranparent : {MAX_ALPHA_TRANSPARENT:3}", self)
+        self.labelTransformAlpha.setGeometry(10, 180, 180, 20)
+
+        self.sliderTransformAlpha = QSlider(Qt.Orientation.Horizontal, self)
+        self.sliderTransformAlpha.setMinimum(0)
+        self.sliderTransformAlpha.setMaximum(256)
+        self.sliderTransformAlpha.setValue(MAX_ALPHA_TRANSPARENT)
+        self.sliderTransformAlpha.setGeometry(20, 200, 150, 30)
+        self.sliderTransformAlpha.valueChanged.connect(self.sliderAlpha)
+        self.transformAlpha = MAX_ALPHA_TRANSPARENT
+
         self.buttonSave = QPushButton("Save image", self)
         self.buttonSave.clicked.connect(self.saveImage)
-        self.buttonSave.setGeometry(20, 200, 150, 30)
+        self.buttonSave.setGeometry(20, 250, 150, 30)
 
         self.buttonCopy = QPushButton("Copy in clipboard", self)
         self.buttonCopy.clicked.connect(self.saveImageInClipboard)
-        self.buttonCopy.setGeometry(20, 250, 150, 30)
+        self.buttonCopy.setGeometry(20, 300, 150, 30)
+
+        self.buttonFlagToggle = QPushButton("Flag Off", self)
+        self.buttonFlagToggle.clicked.connect(self.flagToggle)
+        self.buttonFlagToggle.setGeometry(20, 350, 150, 30)
+        self.isFlagToggle = False
+
+        self.buttonAllColor = QPushButton("All color", self)
+        self.buttonAllColor.clicked.connect(self.allColor)
 
         self.buttonResetColor = QPushButton("Reset color", self)
         self.buttonResetColor.clicked.connect(self.resetColor)
-        self.buttonResetColor.setGeometry(20, 300, 150, 30)
+
 
         self.imageDisplayed = QLabel(self)
         self.imageDisplayed.setGeometry(200, 50, WINDOW_W - 210, WINDOW_H - 60)
@@ -87,7 +106,8 @@ class Window(QMainWindow):
 
         allColorHeight = (COLOR_PADDING * 3) + (COLOR_HEIGHT * 2)
 
-        self.buttonResetColor.setGeometry(20, height - allColorHeight - 30, 150, 30)
+        self.buttonAllColor.setGeometry(20, height - allColorHeight - 80, 150, 30)
+        self.buttonResetColor.setGeometry(20, height - allColorHeight - 40, 150, 30)
 
         self.imageDisplayed.setGeometry(200, 50, width - 410, height - allColorHeight - 50)
 
@@ -155,6 +175,7 @@ class Window(QMainWindow):
         else:
             closestMode = False
 
+        nbPixel = 0
         self.image = self.baseImage.copy()
         for y in range(self.image.height()):
             for x in range(self.image.width()):
@@ -162,12 +183,13 @@ class Window(QMainWindow):
 
                 r, g, b, a = color.getRgb()
 
-                if a > MAX_ALPHA_TRANSPARENT:
+                if a > self.transformAlpha:
                     a = 255
                 else:
                     a = 0
 
                 if a > 0:
+                    nbPixel += 1
                     minDiff = 765
                     minColorId = -1
 
@@ -198,6 +220,9 @@ class Window(QMainWindow):
 
                 self.image.setPixelColor(x, y, QColor(r, g, b, a))
 
+        self.computeTextStat(nbPixel)
+
+        self.computeTextStat()
         w = self.image.width() * self.imageScale
         h = self.image.height() * self.imageScale
         tmpImg = self.image.scaled(w, h,
@@ -242,19 +267,23 @@ class Window(QMainWindow):
         self.setText("Image put in clipboard !", TXT_SUCCESS)
 
 
-    def computeTextStat(self):
+    def computeTextStat(self, nbPixel = None):
         if self.image == None:
             return
 
         # Count nb pixels to draw
-        nbPixel = 0
-        for y in range(self.image.height()):
-            for x in range(self.image.width()):
-                if self.image.pixelColor(x, y).alpha() > MAX_ALPHA_TRANSPARENT:
-                    nbPixel += 1
+        if nbPixel == None:
+            nbPixel = 0
+            for y in range(self.image.height()):
+                for x in range(self.image.width()):
+                    if self.image.pixelColor(x, y).alpha() > self.transformAlpha:
+                        nbPixel += 1
 
         # Compute estimed time
-        estimedTime = nbPixel * 30
+        if self.isFlagToggle:
+            estimedTime = nbPixel * 27
+        else:
+            estimedTime = nbPixel * 30
         idUnit = 0
         remains = []
         while idUnit < len(UNITS_SIZE):
@@ -280,10 +309,10 @@ class Window(QMainWindow):
             idUnit -= 1
 
         # Create text for image stats
-        text = f"    IMAGES STATS\n\n" \
-                + f"size : {self.image.width()}x{self.image.height()}" \
-                + f"\nnb pixels to draw : {nbPixel}" \
-                + f"\nestimed time :\n{strEstimedTime}"
+        text = f"     IMAGE STATS\n\n" \
+                + f"size : {self.image.width()}x{self.image.height()}\n" \
+                + f"nb pixels to draw : {nbPixel}\n" \
+                + f"estimed time :\n{strEstimedTime}"
 
         metrics = QFontMetrics(self.textStats.font())
         size = metrics.size(0, text)
@@ -294,6 +323,26 @@ class Window(QMainWindow):
 
         self.textStats.setText(text)
         self.textStats.setGeometry(self.windowW - width - 10, 30, width, height)
+
+
+    def sliderAlpha(self, value):
+        self.labelTransformAlpha.setText(f"alpha to tranparent : {value:3}")
+        self.transformAlpha = value
+
+
+    def flagToggle(self):
+        self.isFlagToggle = not self.isFlagToggle
+        if self.isFlagToggle:
+            self.buttonFlagToggle.setText("Flag On")
+        else:
+            self.buttonFlagToggle.setText("Flag Off")
+
+        self.computeTextStat()
+
+
+    def allColor(self):
+        for color in self.colors:
+            color.setSelected(True)
 
 
     def resetColor(self):
