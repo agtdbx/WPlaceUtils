@@ -19,6 +19,7 @@ TXT_COLORS = ["white", "green", "red"]
 
 COLOR_PADDING = 3
 COLOR_HEIGHT = 50
+MIN_ALPHA_VALUE = 10
 
 COLORS_BASIC = [
     True, True, True, False, True, True, True, False, True, False, False, True, True, True, True, False, False, False, False, False, False, True, True, True, True, True, True, False, True, False, True, True,
@@ -68,7 +69,7 @@ class Color:
             else:
                 styleBorder = "border: 2px solid yellow;border-radius: 4px;"
         else:
-            styleBorder = "border: 2px solid black;border-radius: 4px;"
+            styleBorder = "border: 2px solid gray;border-radius: 4px;"
         self.button.setStyleSheet(styleBackground + styleBorder)
 
 
@@ -89,6 +90,8 @@ class Window(QMainWindow):
         self.setWindowTitle("WPlace image transfomator")
         self.setGeometry(100, 100, WINDOW_W, WINDOW_H)
         self.setMinimumSize(WINDOW_MIN_W, WINDOW_MIN_H)
+        self.setStyleSheet("background-color: rgb(50, 50, 50)")
+
 
         self.text = QLabel("", self)
 
@@ -194,14 +197,38 @@ class Window(QMainWindow):
 
         for y in range(self.image.height()):
             for x in range(self.image.width()):
-                color = QColor(self.image.pixel(x, y))
+                color = self.image.pixelColor(x, y)
 
-                r, g, b, a =  color.getRgb()
-                print(f"Color : {r:3} {g:3} {b:3} {a:3}  {color.alpha()}")
+                r, g, b, a = color.getRgb()
 
-                color.setAlpha(10)
+                if a > MIN_ALPHA_VALUE:
+                    a = 255
+                else:
+                    a = 0
 
-                self.image.setPixelColor(x, y, color)
+                if a > 0:
+                    minDiff = 765
+                    minColorId = -1
+
+                    for i in range(64):
+                        testColor = self.colors[i].color
+                        dr = abs(r - testColor[0])
+                        dg = abs(g - testColor[1])
+                        db = abs(b - testColor[2])
+
+                        testDiff = dr + dg + db
+
+                        if testDiff < minDiff:
+                            minDiff = testDiff
+                            minColorId = i
+
+                    if minColorId != -1:
+                        closestColor = self.colors[i].color
+                        r = closestColor[0]
+                        g = closestColor[1]
+                        b = closestColor[2]
+
+                self.image.setPixelColor(x, y, QColor(r, g, b, a))
 
         w = self.image.width() * self.imageScale
         h = self.image.height() * self.imageScale
