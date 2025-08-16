@@ -28,6 +28,16 @@ COLORS_RBG = [
     (104, 70, 52), (149,142, 42), (219,164, 99), (123, 99, 82), (156,132,107), (214,181,148), (209,128, 81), (248,178,119),
     (255,197,165), (109,100, 63), (148,140,107), (215,197,158), ( 51, 57, 65), (109,117,141), (179,185,209), (  0,  0,  0),
 ]
+COLORS_NAMES = [
+    "Black", "Dark Gray", "Gray", "Medium  Gray", "Light Gray", "White", "Deep Red", "Dark Red",
+    "Red", "Light Red", "Dark Orange", "Orange", "Gold", "Yellow", "Light Yellow", "Dark Goldenrod",
+    "Goldenrod", "Light Goldenrod", "Dark Olive", "Olive", "Light Olive", "Dark Green", "Green", "Light Green",
+    "Dark Teal", "Teal", "Light Teal", "Dark Cyan", "Cyan", "Light Cyan", "Dark Blue", "Blue",
+    "Light Blue", "Dark Indigo", "Indigo", "Light Indigo", "Dark Slate Blue", "Slate Blue", "Light Slate Blue", "Dark Purple",
+    "Purple", "Light Purple", "Dark  Pink", "Pink", "Light Pink", "Dark Peach", "Peach", "Light Peach",
+    "Dark Brown", "Brown", "Light Brown", "Dark Tan", "Tan", "Light Tan", "Dark Beige", "Beige",
+    "Light Beige", "Dark Stone", "Stone", "Light Stone", "Dark Slate", "Slate", "Light Slate", "Trasparent",
+]
 
 UNITS_SIZE = [60, 60, 24, 30, 12]
 UNITS_NAMES = ["second", "minute", "hour", "day", "month", "year"]

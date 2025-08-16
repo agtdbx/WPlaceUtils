@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QPushButton
 
-from define import COLORS_RBG, COLORS_BASIC
+from define import COLORS_RBG, COLORS_BASIC, COLORS_NAMES
 
 class Color:
     def __init__(self, id, window):
@@ -9,6 +9,7 @@ class Color:
         self.basic = COLORS_BASIC[id]
         self.button = QPushButton(window)
         self.button.clicked.connect(self.clickOnButton)
+        self.button.setToolTip(COLORS_NAMES[id])
         self.textStatsSize = None
         self.setSelected(self.basic)
 
