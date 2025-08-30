@@ -190,7 +190,7 @@ class Window(QMainWindow):
 
                 if a > 0:
                     nbPixel += 1
-                    minDiff = 765
+                    minDiff = 447697125
                     minColorId = -1
 
                     for i in range(64):
@@ -204,7 +204,7 @@ class Window(QMainWindow):
                         if closestMode:
                             testDiff = dr + dg + db
                         else:
-                            testDiff = math.sqrt(dr**2 + dg**2 + db**2)
+                            testDiff = dr**2 + dg**2 + db**2
 
                         if testDiff < minDiff:
                             minDiff = testDiff
