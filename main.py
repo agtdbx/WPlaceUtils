@@ -79,7 +79,12 @@ class Window(QMainWindow):
         self.labelTransformMode.setGeometry(20, 380, 180, 20)
 
         self.selectTransformMode = QComboBox(self)
-        self.selectTransformMode.addItems(["Vectorial", "Closest"])
+        self.selectTransformMode.addItems([
+            "Vectorial",
+            "Vectorial red shift",
+            "Vectorial green shift",
+            "Vectorial blue shift",
+            "Closest"])
         self.selectTransformMode.setGeometry(20, 400, 150, 30)
 
         self.buttonTransform = QPushButton("Transform image", self)
@@ -216,22 +221,15 @@ class Window(QMainWindow):
             self.setText("You must load an image before transform it", TXT_ERROR)
             return
 
+        alphaMode = self.selectAlphaMode.currentText()
+
         nbPixel = 0
         self.image = self.baseImage.copy()
         for y in range(self.image.height()):
             for x in range(self.image.width()):
                 color = self.image.pixelColor(x, y)
 
-                r, g, b, a = color.getRgb()
-
-                if a > self.transformAlpha:
-                    darkenRatio = a / 255
-                    r = int(r * darkenRatio)
-                    g = int(g * darkenRatio)
-                    b = int(b * darkenRatio)
-                    a = 255
-                else:
-                    a = 0
+                r, g, b, a = transformAlpha(color.getRgb(), self.transformAlpha, alphaMode)
 
                 self.image.setPixelColor(x, y, QColor(r, g, b, a))
 
@@ -253,10 +251,8 @@ class Window(QMainWindow):
             self.setText("You must load an image before transform it", TXT_ERROR)
             return
 
-        if self.selectTransformMode.currentText() == "Closest":
-            closestMode = True
-        else:
-            closestMode = False
+        alphaMode = self.selectAlphaMode.currentText()
+        transformMode = self.selectTransformMode.currentText()
 
         nbPixel = 0
         self.image = self.baseImage.copy()
@@ -264,34 +260,49 @@ class Window(QMainWindow):
             for x in range(self.image.width()):
                 color = self.image.pixelColor(x, y)
 
-                r, g, b, a = color.getRgb()
-
-                if a > self.transformAlpha:
-                    darkenRatio = a / 255
-                    r = int(r * darkenRatio)
-                    g = int(g * darkenRatio)
-                    b = int(b * darkenRatio)
-                    a = 255
-                else:
-                    a = 0
+                # Alpha transformation
+                r, g, b, a = transformAlpha(color.getRgb(), self.transformAlpha, alphaMode)
 
                 if a > 0:
+                    # Choose right color
                     nbPixel += 1
-                    minDiff = 447697125
+                    minDiff = math.inf
                     minColorId = -1
 
                     for i in range(64):
                         if not self.colors[i].selected:
                             continue
                         testColor = self.colors[i].color
-                        dr = abs(r - testColor[0])
-                        dg = abs(g - testColor[1])
-                        db = abs(b - testColor[2])
+                        rDiff = testColor[0] - r
+                        gDiff = testColor[1] - g
+                        bDiff = testColor[2] - b
 
-                        if closestMode:
-                            testDiff = dr + dg + db
+                        if transformMode == "Vectorial":
+                            testDiff = rDiff**2 + gDiff**2 + bDiff**2
+
+                        elif transformMode == "Vectorial red shift":
+                            rMean = (testColor[0] + r) / 2
+                            rShift = int((512 + rMean) * rDiff * rDiff) >> 8
+                            gShift = 4 * gDiff * gDiff
+                            bShift = int((767 - rMean) * bDiff * bDiff) >> 8
+                            testDiff = rShift**2 + gShift**2 + bShift**2
+
+                        elif transformMode == "Vectorial green shift":
+                            gMean = (testColor[1] + g) / 2
+                            rShift = int((767 - gMean) * rDiff * rDiff) >> 8
+                            gShift = int((512 + gMean) * gDiff * gDiff) >> 8
+                            bShift = 4 * bDiff * bDiff
+                            testDiff = rShift**2 + gShift**2 + bShift**2
+
+                        elif transformMode == "Vectorial blue shift":
+                            bMean = (testColor[2] + b) / 2
+                            rShift = 4 * rDiff * rDiff
+                            gShift = int((767 - bMean) * gDiff * gDiff) >> 8
+                            bShift = int((512 + bMean) * bDiff * bDiff) >> 8
+                            testDiff = rShift**2 + gShift**2 + bShift**2
+
                         else:
-                            testDiff = dr**2 + dg**2 + db**2
+                            testDiff = abs(rDiff) + abs(gDiff) + abs(bDiff)
 
                         if testDiff < minDiff:
                             minDiff = testDiff
@@ -484,7 +495,7 @@ class Window(QMainWindow):
         super().resizeEvent(event)  # Call base class implementation
 
 
-    def setText(self, text="", type=TXT_INFO):
+    def setText(self, text: str = "", type: int = TXT_INFO):
         if text == "":
             self.text.setText("")
             return
@@ -500,6 +511,34 @@ class Window(QMainWindow):
         self.text.setStyleSheet(f"color: {TXT_COLORS[type]};")
 
 
+# Functions
+def lerpColor(s: tuple[int], e: tuple[int], t: float) -> tuple[int]:
+        return (
+            int(s[0] + (e[0] - s[0]) * t),
+            int(s[1] + (e[1] - s[1]) * t),
+            int(s[2] + (e[2] - s[2]) * t)
+        )
+
+
+def transformAlpha(color: tuple[int], transformAlpha: int, alphaMode: str) -> tuple[int]:
+    r, g, b, a = color
+
+    if a > transformAlpha:
+        if alphaMode == "Darken":
+            ratio = 1.0 - (a / 255)
+            r, g, b = lerpColor((r, g, b), (0, 0, 0), ratio)
+
+        elif alphaMode == "Lighten":
+            ratio = 1.0 - (a / 255)
+
+            r, g, b = lerpColor((r, g, b), (255, 255, 255), ratio)
+        a = 255
+
+    else:
+        a = 0
+
+    return (r, g, b, a)
+
 
 def main():
     app = QApplication(sys.argv)
@@ -509,3 +548,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
