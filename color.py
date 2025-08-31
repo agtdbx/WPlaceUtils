@@ -14,9 +14,12 @@ class Color:
         self.id = id
         self.color = COLORS_RBG[id]
         self.basic = COLORS_BASIC[id]
-        self.button = QPushButton(window)
-        self.button.clicked.connect(self.clickOnButton)
-        self.button.setToolTip(COLORS_NAMES[id])
+        if window != None:
+            self.button = QPushButton(window)
+            self.button.clicked.connect(self.clickOnButton)
+            self.button.setToolTip(COLORS_NAMES[id])
+        else:
+            self.button = None
         self.textStatsSize = None
         self.setSelected(self.basic)
 
@@ -31,6 +34,10 @@ class Color:
 
     def setSelected(self, selected):
         self.selected = selected
+
+        if self.button == None:
+            return
+
         if self.id != 63:
             styleBackground = rgbToStyleColor("background-color :", self.color)
         else:
@@ -46,3 +53,9 @@ class Color:
         styleBorder += "border-radius: 8px;"
         styleQtoolType = rgbToStyleColor("color :", invertRgb(self.color))
         self.button.setStyleSheet(styleBackground + styleBorder + styleQtoolType)
+
+
+    def copy(self) -> 'Color':
+        newColor = Color(self.id, None)
+        newColor.selected = self.selected
+        return newColor
