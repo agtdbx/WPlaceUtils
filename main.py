@@ -1,12 +1,12 @@
-import sys, math
-import threading
-from PyQt6.QtCore import Qt, QThread, QObject, pyqtSignal, QTimer, QMetaObject
-from PyQt6.QtGui import QImage, QPixmap, QColor, QFontMetrics, QClipboard
+import sys
+from PyQt6.QtCore import Qt, QThread
+from PyQt6.QtGui import QImage, QPixmap, QFontMetrics, QClipboard
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QComboBox, QSlider, QFileDialog
 
 from define import *
 from color import Color
-
+from transformAlpha import AlphaTransformWorker
+from transformColor import ColorTransformWorker
 
 # Window class
 class Window(QMainWindow):
@@ -227,8 +227,6 @@ class Window(QMainWindow):
         self.setText("Transformation aplha progress : 0%", TXT_INFO)
 
         alphaMode = self.selectAlphaMode.currentText()
-
-        transformImageAlpha(self.baseImage.copy(), self.ignoreAlpha, alphaMode)
 
         # Create thread and worker
         self.transformThread = QThread(self)
@@ -506,205 +504,6 @@ class Window(QMainWindow):
         self.text.setGeometry(WINDOW_W // 2 - width // 2, 10, width, height)
 
         self.text.setStyleSheet(f"color: {TXT_COLORS[type]};")
-
-
-# Functions
-def lerpColor(s: tuple[int], e: tuple[int], t: float) -> tuple[int]:
-        return (
-            int(s[0] + (e[0] - s[0]) * t),
-            int(s[1] + (e[1] - s[1]) * t),
-            int(s[2] + (e[2] - s[2]) * t)
-        )
-
-
-def transformAlphaColor(color: tuple[int], ignoreAlpha: int, alphaMode: str) -> tuple[int]:
-    r, g, b, a = color
-
-    if a == 255:
-        pass
-
-    elif a > ignoreAlpha:
-        if alphaMode == "Darken":
-            ratio = 1.0 - (a / 255)
-            r, g, b = lerpColor((r, g, b), (0, 0, 0), ratio)
-
-        elif alphaMode == "Lighten":
-            ratio = 1.0 - (a / 255)
-
-            r, g, b = lerpColor((r, g, b), (255, 255, 255), ratio)
-        a = 255
-
-    else:
-        a = 0
-
-    return (r, g, b, a)
-
-
-def transformImageAlpha(image: QImage, ignoreAlpha: int, alphaMode: str):
-    nbPixel = 0
-    for y in range(image.height()):
-        for x in range(image.width()):
-            color = image.pixelColor(x, y)
-
-            r, g, b, a = transformAlphaColor(color.getRgb(), ignoreAlpha, alphaMode)
-
-            if a != 0:
-                nbPixel += 1
-
-            image.setPixelColor(x, y, QColor(r, g, b, a))
-
-
-class AlphaTransformWorker(QObject):
-    progress = pyqtSignal(int)
-    finished = pyqtSignal(QImage, int)
-
-    def __init__(self,
-                 image: QImage,
-                 ignoreAlpha: int,
-                 alphaMode: str):
-        super().__init__(None)
-
-        self.image = image
-        self.ignoreAlpha = ignoreAlpha
-        self.alphaMode = alphaMode
-        self._abort = False
-
-
-    def run(self):
-        nbPixel = 0
-        for y in range(self.image.height()):
-
-            if self._abort:
-                break
-
-            self.progress.emit(int(y / self.image.height() * 100))
-
-            for x in range(self.image.width()):
-
-                if self._abort:
-                    break
-
-                color = self.image.pixelColor(x, y)
-
-                r, g, b, a = transformAlphaColor(color.getRgb(), self.ignoreAlpha, self.alphaMode)
-
-                if a != 0:
-                    nbPixel += 1
-
-                self.image.setPixelColor(x, y, QColor(r, g, b, a))
-
-        self.finished.emit(self.image, nbPixel)
-
-
-    def abort(self):
-        self._abort = True
-
-
-class ColorTransformWorker(QObject):
-    progress = pyqtSignal(int)
-    finished = pyqtSignal(QImage, int)
-
-    def __init__(self,
-                 image: QImage,
-                 ignoreAlpha: int,
-                 alphaMode: str,
-                 transformMode: str,
-                 colors: list[Color]):
-        super().__init__(None)
-
-        self.image = image
-        self.ignoreAlpha = ignoreAlpha
-        self.alphaMode = alphaMode
-        self.transformMode = transformMode
-        self.colors = []
-        for color in colors:
-            self.colors.append(color.copy())
-        self._abort = False
-
-
-    def run(self):
-        nbPixel = 0
-        for y in range(self.image.height()):
-
-            if self._abort:
-                break
-
-            self.progress.emit(int(y / self.image.height() * 100))
-
-            for x in range(self.image.width()):
-
-                if self._abort:
-                    break
-
-                color = self.image.pixelColor(x, y)
-
-                # Alpha transformation
-                r, g, b, a = transformAlphaColor(color.getRgb(), self.ignoreAlpha, self.alphaMode)
-
-                # Ignore pixel if transparent
-                if a == 0:
-                    self.image.setPixelColor(x, y, QColor(r, g, b, a))
-                    continue
-
-                # Choose right color
-                nbPixel += 1
-                minDiff = math.inf
-                minColorId = -1
-
-                for i in range(64):
-                    if not self.colors[i].selected:
-                        continue
-                    testColor = self.colors[i].color
-                    rDiff = testColor[0] - r
-                    gDiff = testColor[1] - g
-                    bDiff = testColor[2] - b
-
-                    if self.transformMode == "Vectorial":
-                        testDiff = rDiff**2 + gDiff**2 + bDiff**2
-
-                    elif self.transformMode == "Vectorial red shift":
-                        rMean = (testColor[0] + r) / 2
-                        rShift = int((512 + rMean) * rDiff * rDiff) >> 8
-                        gShift = 4 * gDiff * gDiff
-                        bShift = int((767 - rMean) * bDiff * bDiff) >> 8
-                        testDiff = rShift**2 + gShift**2 + bShift**2
-
-                    elif self.transformMode == "Vectorial green shift":
-                        gMean = (testColor[1] + g) / 2
-                        rShift = int((767 - gMean) * rDiff * rDiff) >> 8
-                        gShift = int((512 + gMean) * gDiff * gDiff) >> 8
-                        bShift = 4 * bDiff * bDiff
-                        testDiff = rShift**2 + gShift**2 + bShift**2
-
-                    elif self.transformMode == "Vectorial blue shift":
-                        bMean = (testColor[2] + b) / 2
-                        rShift = 4 * rDiff * rDiff
-                        gShift = int((767 - bMean) * gDiff * gDiff) >> 8
-                        bShift = int((512 + bMean) * bDiff * bDiff) >> 8
-                        testDiff = rShift**2 + gShift**2 + bShift**2
-
-                    else:
-                        testDiff = abs(rDiff) + abs(gDiff) + abs(bDiff)
-
-                    if testDiff < minDiff:
-                        minDiff = testDiff
-                        minColorId = i
-
-                if minColorId != -1:
-                    closestColor = self.colors[minColorId].color
-                    r = closestColor[0]
-                    g = closestColor[1]
-                    b = closestColor[2]
-                else:
-                    r, g, b, a = (0, 0, 0, 0)
-
-                self.image.setPixelColor(x, y, QColor(r, g, b, a))
-
-        self.finished.emit(self.image, nbPixel)
-
-
-    def abort(self):
-        self._abort = True
 
 
 def main():
