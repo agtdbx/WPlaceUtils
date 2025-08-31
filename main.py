@@ -31,8 +31,9 @@ class Window(QMainWindow):
         self.setStyleSheet("background-color: rgb(50, 50, 50)")
 
         # Load section
-        self.labelLoadSection = QLabel(f"Load Image", self)
-        self.labelLoadSection.setGeometry(20, 20, 180, 30)
+        self.labelLoadSection = QLabel(f"Loading", self)
+        self.labelLoadSection.setGeometry(20, 0, 180, 75)
+        self.labelLoadSection.setStyleSheet("font-size: 20px; font-weight: bold;")
 
         self.buttonOpen = QPushButton("From file", self)
         self.buttonOpen.clicked.connect(self.loadImage)
@@ -45,6 +46,7 @@ class Window(QMainWindow):
         # Alpha section
         self.labelAlphaSection = QLabel(f"Alpha", self)
         self.labelAlphaSection.setGeometry(20, 150, 180, 20)
+        self.labelAlphaSection.setStyleSheet("font-size: 20px; font-weight: bold;")
 
         self.labelAlphaMode = QLabel(f"Transformation mode :", self)
         self.labelAlphaMode.setGeometry(20, 180, 180, 20)
@@ -71,6 +73,7 @@ class Window(QMainWindow):
         # Transformation section
         self.labelTransformationSection = QLabel(f"Transformation", self)
         self.labelTransformationSection.setGeometry(20, 350, 180, 20)
+        self.labelTransformationSection.setStyleSheet("font-size: 20px; font-weight: bold;")
 
         self.labelTransformMode = QLabel(f"Mode :", self)
         self.labelTransformMode.setGeometry(20, 380, 180, 20)
@@ -79,13 +82,14 @@ class Window(QMainWindow):
         self.selectTransformMode.addItems(["Vectorial", "Closest"])
         self.selectTransformMode.setGeometry(20, 400, 150, 30)
 
-        self.buttonTransform = QPushButton("Transform", self)
+        self.buttonTransform = QPushButton("Transform image", self)
         self.buttonTransform.clicked.connect(self.transformImage)
         self.buttonTransform.setGeometry(20, 440, 150, 30)
 
         # Save section
-        self.labelSaveSection = QLabel(f"Save", self)
+        self.labelSaveSection = QLabel(f"Saving", self)
         self.labelSaveSection.setGeometry(20, 500, 180, 20)
+        self.labelSaveSection.setStyleSheet("font-size: 20px; font-weight: bold;")
 
         self.buttonSave = QPushButton("Save as file", self)
         self.buttonSave.clicked.connect(self.saveImage)
@@ -97,11 +101,12 @@ class Window(QMainWindow):
 
         # Colors section
         self.labelColorsSection = QLabel(f"Colors", self)
+        self.labelColorsSection.setStyleSheet("font-size: 20px; font-weight: bold;")
 
-        self.buttonAllColor = QPushButton("All color", self)
+        self.buttonAllColor = QPushButton("Select all", self)
         self.buttonAllColor.clicked.connect(self.allColor)
 
-        self.buttonResetColor = QPushButton("Reset color", self)
+        self.buttonResetColor = QPushButton("Reset selection", self)
         self.buttonResetColor.clicked.connect(self.resetColor)
 
         # Middle section
