@@ -30,48 +30,73 @@ class Window(QMainWindow):
         self.setMinimumSize(WINDOW_MIN_W, WINDOW_MIN_H)
         self.setStyleSheet("background-color: rgb(50, 50, 50)")
 
-        self.text = QLabel("", self)
-        self.textStats = QLabel("", self)
+        # Load section
+        self.labelLoadSection = QLabel(f"Load Image", self)
+        self.labelLoadSection.setGeometry(20, 20, 180, 30)
 
-        self.buttonOpen = QPushButton("Load image", self)
+        self.buttonOpen = QPushButton("From file", self)
         self.buttonOpen.clicked.connect(self.loadImage)
-        self.buttonOpen.setGeometry(20, 20, 150, 30)
+        self.buttonOpen.setGeometry(20, 50, 150, 30)
 
-        self.buttonOpen = QPushButton("Load from clipboard", self)
+        self.buttonOpen = QPushButton("From clipboard", self)
         self.buttonOpen.clicked.connect(self.loadImageFromClipboard)
-        self.buttonOpen.setGeometry(20, 70, 150, 30)
+        self.buttonOpen.setGeometry(20, 90, 150, 30)
 
-        self.buttonTransform = QPushButton("Modify image", self)
-        self.buttonTransform.clicked.connect(self.modifyImage)
-        self.buttonTransform.setGeometry(20, 120, 150, 30)
+        # Alpha section
+        self.labelAlphaSection = QLabel(f"Alpha", self)
+        self.labelAlphaSection.setGeometry(20, 150, 180, 20)
 
-        self.selectTransformMode = QComboBox(self)
-        self.selectTransformMode.addItems(["Closest", "Vectorial"])
-        self.selectTransformMode.setGeometry(20, 150, 150, 30)
+        self.labelAlphaMode = QLabel(f"Transformation mode :", self)
+        self.labelAlphaMode.setGeometry(20, 180, 180, 20)
 
-        self.labelTransformAlpha = QLabel(f"alpha to tranparent : {MAX_ALPHA_TRANSPARENT:3}", self)
-        self.labelTransformAlpha.setGeometry(10, 180, 180, 20)
+        self.selectAlphaMode = QComboBox(self)
+        self.selectAlphaMode.addItems(["Ignore channel", "Darken", "Lighten"])
+        self.selectAlphaMode.setGeometry(20, 200, 150, 30)
+
+        self.labelTransformAlpha = QLabel(f"Ignore alpha < {MAX_ALPHA_TRANSPARENT:3}", self)
+        self.labelTransformAlpha.setGeometry(20, 240, 180, 20)
 
         self.sliderTransformAlpha = QSlider(Qt.Orientation.Horizontal, self)
         self.sliderTransformAlpha.setMinimum(0)
         self.sliderTransformAlpha.setMaximum(256)
         self.sliderTransformAlpha.setValue(MAX_ALPHA_TRANSPARENT)
-        self.sliderTransformAlpha.setGeometry(20, 200, 150, 30)
+        self.sliderTransformAlpha.setGeometry(20, 260, 150, 30)
         self.sliderTransformAlpha.valueChanged.connect(self.sliderAlpha)
         self.transformAlpha = MAX_ALPHA_TRANSPARENT
 
-        self.buttonSave = QPushButton("Save image", self)
+        self.buttonTransform = QPushButton("Transform alpha only", self)
+        self.buttonTransform.clicked.connect(self.transformImageAlphaOnly)
+        self.buttonTransform.setGeometry(20, 290, 150, 30)
+
+        # Transformation section
+        self.labelTransformationSection = QLabel(f"Transformation", self)
+        self.labelTransformationSection.setGeometry(20, 350, 180, 20)
+
+        self.labelTransformMode = QLabel(f"Mode :", self)
+        self.labelTransformMode.setGeometry(20, 380, 180, 20)
+
+        self.selectTransformMode = QComboBox(self)
+        self.selectTransformMode.addItems(["Vectorial", "Closest"])
+        self.selectTransformMode.setGeometry(20, 400, 150, 30)
+
+        self.buttonTransform = QPushButton("Transform", self)
+        self.buttonTransform.clicked.connect(self.transformImage)
+        self.buttonTransform.setGeometry(20, 440, 150, 30)
+
+        # Save section
+        self.labelSaveSection = QLabel(f"Save", self)
+        self.labelSaveSection.setGeometry(20, 500, 180, 20)
+
+        self.buttonSave = QPushButton("Save as file", self)
         self.buttonSave.clicked.connect(self.saveImage)
-        self.buttonSave.setGeometry(20, 250, 150, 30)
+        self.buttonSave.setGeometry(20, 530, 150, 30)
 
         self.buttonCopy = QPushButton("Copy in clipboard", self)
         self.buttonCopy.clicked.connect(self.saveImageInClipboard)
-        self.buttonCopy.setGeometry(20, 300, 150, 30)
+        self.buttonCopy.setGeometry(20, 570, 150, 30)
 
-        self.buttonFlagToggle = QPushButton("Flag Off", self)
-        self.buttonFlagToggle.clicked.connect(self.flagToggle)
-        self.buttonFlagToggle.setGeometry(20, 350, 150, 30)
-        self.isFlagToggle = False
+        # Colors section
+        self.labelColorsSection = QLabel(f"Colors", self)
 
         self.buttonAllColor = QPushButton("All color", self)
         self.buttonAllColor.clicked.connect(self.allColor)
@@ -79,10 +104,20 @@ class Window(QMainWindow):
         self.buttonResetColor = QPushButton("Reset color", self)
         self.buttonResetColor.clicked.connect(self.resetColor)
 
+        # Middle section
+        self.text = QLabel("", self)
 
         self.imageDisplayed = QLabel(self)
         self.imageDisplayed.setGeometry(200, 50, WINDOW_W - 210, WINDOW_H - 60)
         self.imageDisplayed.setStyleSheet("border: 2px solid red;border-radius: 4px;")
+
+        # Right section
+        self.buttonFlagToggle = QPushButton("Flag Off", self)
+        self.buttonFlagToggle.clicked.connect(self.flagToggle)
+        self.isFlagToggle = False
+
+        self.textStats = QLabel("", self)
+
 
         self.colors: list[Color] = []
         for i in range(64):
@@ -106,14 +141,20 @@ class Window(QMainWindow):
 
         allColorHeight = (COLOR_PADDING * 3) + (COLOR_HEIGHT * 2)
 
+        # Left section
+        self.labelColorsSection.setGeometry(20, height - allColorHeight - 110, 180, 20)
         self.buttonAllColor.setGeometry(20, height - allColorHeight - 80, 150, 30)
         self.buttonResetColor.setGeometry(20, height - allColorHeight - 40, 150, 30)
 
+        # Middle section
         self.imageDisplayed.setGeometry(200, 50, width - 410, height - allColorHeight - 50)
+
+        # Right section
+        self.buttonFlagToggle.setGeometry(self.windowW - 150, 50, 70, 30)
 
         if self.textStatsSize != None:
             width, height = self.textStatsSize
-            self.textStats.setGeometry(self.windowW - width - 10, 30, width, height)
+            self.textStats.setGeometry(self.windowW - width - 10, 90, width, height)
 
 
     def setImage(self, image: QImage):
@@ -163,7 +204,44 @@ class Window(QMainWindow):
         self.setImage(image)
 
 
-    def modifyImage(self):
+    def transformImageAlphaOnly(self):
+        self.setText()
+
+        if self.image == None:
+            self.setText("You must load an image before transform it", TXT_ERROR)
+            return
+
+        nbPixel = 0
+        self.image = self.baseImage.copy()
+        for y in range(self.image.height()):
+            for x in range(self.image.width()):
+                color = self.image.pixelColor(x, y)
+
+                r, g, b, a = color.getRgb()
+
+                if a > self.transformAlpha:
+                    darkenRatio = a / 255
+                    r = int(r * darkenRatio)
+                    g = int(g * darkenRatio)
+                    b = int(b * darkenRatio)
+                    a = 255
+                else:
+                    a = 0
+
+                self.image.setPixelColor(x, y, QColor(r, g, b, a))
+
+        self.computeTextStat(nbPixel)
+
+        self.computeTextStat()
+        w = self.image.width() * self.imageScale
+        h = self.image.height() * self.imageScale
+        tmpImg = self.image.scaled(w, h,
+                                    Qt.AspectRatioMode.KeepAspectRatio,
+                                    Qt.TransformationMode.FastTransformation)
+        self.imageDisplayed.setPixmap(QPixmap.fromImage(tmpImg))
+
+
+    def transformImage(self):
         self.setText()
 
         if self.image == None:
@@ -184,6 +262,10 @@ class Window(QMainWindow):
                 r, g, b, a = color.getRgb()
 
                 if a > self.transformAlpha:
+                    darkenRatio = a / 255
+                    r = int(r * darkenRatio)
+                    g = int(g * darkenRatio)
+                    b = int(b * darkenRatio)
                     a = 255
                 else:
                     a = 0
@@ -322,11 +404,11 @@ class Window(QMainWindow):
         self.textStatsSize = (width, height)
 
         self.textStats.setText(text)
-        self.textStats.setGeometry(self.windowW - width - 10, 30, width, height)
+        self.textStats.setGeometry(self.windowW - width - 10, 90, width, height)
 
 
     def sliderAlpha(self, value):
-        self.labelTransformAlpha.setText(f"alpha to tranparent : {value:3}")
+        self.labelTransformAlpha.setText(f"Ignore alpha < {value:3}")
         self.transformAlpha = value
 
 

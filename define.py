@@ -1,7 +1,7 @@
 WINDOW_W = 1600
 WINDOW_H = 900
-WINDOW_MIN_W = 800
-WINDOW_MIN_H = 450
+WINDOW_MIN_W = 900
+WINDOW_MIN_H = 870
 MIN_SCALE = 1
 MAX_SCALE = 25
 
@@ -22,7 +22,7 @@ COLORS_BASIC = [
     False, False, True , True , False, False, False, True ,
     True , True , True , True , True , False, False, False,
     True , True , False, False, False, False, False, True ,
-    False, False, False, False, False, False, False, True 
+    False, False, False, False, False, False, False, True
 ]
 COLORS_RBG = [
     (  0,  0,  0), ( 60, 60, 60), (120,120,120), (170,170,170), (210,210,210), (255,255,255), ( 96,  0, 24), (165, 14, 30),
